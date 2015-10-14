@@ -16,20 +16,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gtk2-engines \
     dmz-cursor-theme \
     tightvncserver \
-    default-jdk \
     xrdp \
     firefox && \
     apt-get autoclean && \
     apt-get autoremove && \
     rm -rf /var/lib/apt/lists/*
 
-# Create a link to firefox on the desktop
+# Create a link to firefox on the desktop and put it in autostart
 WORKDIR ${USERHOME}
 RUN mkdir Desktop && \
-    printf "%b\n" '#!'"`which env` xdg-open\n\n[Desktop Entry]\nExec=/usr/bin/firefox\nIcon=/root/eclipse_palladio/icon.xpm\nTerminal=false\nType=Application\nPath=/root/eclipse_palladio/" > Desktop/Mozilla\ Firefox.desktop
+    mkdir -p .config/autostart && \
+    cp /usr/share/applications/firefox.desktop Desktop/ && \
+    cp /usr/share/applications/firefox.desktop .config/autostart/
 
 # Set the VNC server
-RUN echo "firefox" > password.txt && \
+RUN echo "docker" > password.txt && \
     cat password.txt password.txt | vncpasswd && \
     rm password.txt
 
