@@ -8,24 +8,32 @@ def run(command, background=False):
     if background:
         subprocess.Popen(command.split())
     else:
-        subprocess.call(command.split())
+        return subprocess.call(command.split())
 
+def is_container_running(container):
+    try:
+        output = subprocess.check_output("docker ps | awk '{{print $2}}' | grep {}".format(container), shell=True)
+        return True
+    except subprocess.CalledProcessError:
+        return False
 
 def docker_run(args):
     if args == None:
         return
     if args.container == 'firefox':
-        run('docker stop firefox')
-        run('docker rm firefox')
+        if is_container_running(args.container):
+            run('docker stop firefox')
+            run('docker rm firefox')
         if not args.stop:
             run('docker run --name firefox -p {vnc}:5901 -p {rdp}:3389 -e "GEOMETRY={g}" rickdesantis/firefox'.format(vnc=args.vnc, rdp=args.rdp, g=args.g), True)
             if not args.startonly:
                 run('open vnc://127.0.0.1:5901')
     elif args.container == 'centos':
-        run('docker stop centos')
-        run('docker rm centos')
+        if is_container_running(args.container):
+            run('docker stop centos')
+            run('docker rm centos')
         if not args.stop:
-            run('docker run --name centos rickdesantis/centos', True)
+            run('docker run --name centos rickdesantis/centos')
             if not args.startonly:
                 run('docker exec -it centos bash')
 
