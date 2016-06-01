@@ -11,9 +11,9 @@ RUN yum update -y -q && \
     touch /tmp/empty
 
 # Fake command
-CMD tail -f /tmp/empty
+CMD tail -F /tmp/empty
 
-# Build: docker build -t centos1 ../CentOS
+# Build: docker build -t centos1 ../centos
 # Run:   docker run --name=centos1 centos1 &
 # Bash:  docker exec -it centos1 bash
 # Start: docker start centos1

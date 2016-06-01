@@ -21,18 +21,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gtk2-engines \
     dmz-cursor-theme \
     tightvncserver \
-    xrdp \
-    firefox && \
+    xrdp && \
     apt-get autoclean && \
     apt-get autoremove && \
     rm -rf /var/lib/apt/lists/*
 
-# Create a link to firefox on the desktop and put it in autostart
+# Create some useful folders
 WORKDIR ${USERHOME}
 RUN mkdir Desktop && \
     mkdir -p .config/autostart && \
-    cp /usr/share/applications/firefox.desktop Desktop/ && \
-    sed 's|%u||' </usr/share/applications/firefox.desktop >.config/autostart/firefox.desktop
+    mkdir .vnc
 
 # Set the VNC server
 RUN echo $PASSWORD > password.txt && \
@@ -48,10 +46,10 @@ RUN sed 's|\[xrdp1\]|\[xrdp1000\]\nname=VNC-Session\nlib=libvnc.so\nip=localhost
 # Starts the VNC server
 EXPOSE 5901
 EXPOSE 3389
-CMD service xrdp start && vncserver :1 -desktop Firefox -geometry $GEOMETRY -depth 24 -dpi 100 && tail -F /root/.vnc/*.log
+CMD service xrdp start && vncserver :1 -desktop LXDE -geometry $GEOMETRY -depth 24 -dpi 100 && tail -F /root/.vnc/*.log
 
-# Build: docker build -t firefox1 ../firefox
-# Run:   docker run --name=firefox1 -p 5901:5901 -p 3389:3389 firefox1 &
-# Bash:  docker exec -it firefox1 bash
-# Start: docker start firefox1
-# Stop:  docker stop firefox1
+# Build: docker build -t lxde1 ../lxde
+# Run:   docker run --name=lxde1  -p 5901:5901 -p 3389:3389 lxde1 &
+# Bash:  docker exec -it lxde1 bash
+# Start: docker start lxde1
+# Stop:  docker stop lxde1
