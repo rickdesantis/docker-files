@@ -12,7 +12,6 @@ ENV PASSWORD docker
 ENV CRAN_MIRROR http://cran.r-project.org
 ENV R_SITE_LIBRARY /usr/local/lib/R/site-library:/usr/lib/R/site-library:/usr/lib/R/library
 ENV INSTALL_R_PKG_COMMAND apt-get update > /dev/null && apt-get install -y --no-install-recommends r-cran-%%PKG%%
-ENV IS_AVAILABLE_R_PKG_COMMAND apt-get update > /dev/null && apt-cache search r-cran-%%PKG%% | if [ $(wc -l) -ge 1 ]; then return 0; else return 100; fi
 
 # Update the repos and install all the used packages
 RUN apt-get update && apt-get install -y --no-install-recommends \

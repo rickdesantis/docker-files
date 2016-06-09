@@ -70,34 +70,24 @@ function install_r_packages(packages) {
     if (!packages || packages.length == 0)
         return 'No packages specified!';
     console.log("INSTALL:", packages.join());
-    var actual_packages = [];
-    packages.forEach(function(package) {
+    var cmd = '';
+    packages.forEach(function(package, i, vett) {
         var found = false;
         site_library.split(':').forEach(function(path) {
             found = found || file_exists(path + '/' + package);
         });
 
         if (!found) {
-            if (process.env.INSTALL_R_PKG_COMMAND && process.env.IS_AVAILABLE_R_PKG_COMMAND) {
-                res = run_with_exit_code(process.env.IS_AVAILABLE_R_PKG_COMMAND.replace('%%PKG%%', package));
-                if (res == 0) {
-                    res = run_with_exit_code(process.env.INSTALL_R_PKG_COMMAND.replace('%%PKG%%', package));
-                    if (res != 0) {
-                        actual_packages.push('"' + package + '"');
-                    }
-                }
-            } else {
-                actual_packages.push('"' + package + '"');
-            }
+            var res = -1;
+            if (process.env.INSTALL_R_PKG_COMMAND)
+                res = run_with_exit_code(process.env.INSTALL_R_PKG_COMMAND.replace('%%PKG%%', package.toLowerCase()));
+            if (res != 0)
+                    cmd += 'if (!require("' + package + '")) { install.packages("' + package + '", repos="' + cran_mirror + '") }; ';
         }
-    })
 
-    if (actual_packages.length > 0) {
-        var cmd = '';
-        actual_packages.forEach(function(package) { cmd += 'if (!require(' + package + ')) { install.packages(' + package + ', repos="' + cran_mirror + '") }; '; } )
-        //run_command('R -e \'install.packages(c(' + actual_packages.join() + '))\'');
-        run_command('R -e \'' + cmd + '\'');
-    }
+        if (i >= vett.length - 1 && cmd.length > 0)
+            run_command('R -e \'' + cmd + '\'');
+    })
 }
 
 function r_execute(file) {
