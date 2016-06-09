@@ -9,6 +9,7 @@ var express         = require('express'),
     bodyParser      = require('body-parser'),
     crypto          = require('crypto'),
     exec            = require('child_process').exec,
+    execSync        = require('child_process').execSync,
     auth            = require('basic-auth');
 
 var app = express();
@@ -35,6 +36,26 @@ function file_exists(filePath) {
     }
 }
 
+function run_command_fg(command) {
+    console.log('RUN:', command);
+    try {
+        execSync(command);
+        return 0;
+    } catch (error) {
+        return 'Error while running the script.'; //error.code;
+    }
+}
+
+function run_with_exit_code(command) {
+    console.log('RUN:', command);
+    try {
+        execSync(command);
+        return 0;
+    } catch (error) {
+        return error.status;
+    }
+}
+
 function run_command(command) {
     console.log('RUN:', command);
     exec(command, function(error, stdout, stderr) {
@@ -51,13 +72,29 @@ function install_r_packages(packages) {
     console.log("INSTALL:", packages.join());
     var actual_packages = [];
     packages.forEach(function(package) {
-        if (!file_exists(site_library + package))
-            actual_packages.push('"' + package + '"');
+        var found = false;
+        site_library.split(':').forEach(function(path) {
+            found = found || file_exists(path + '/' + package);
+        });
+
+        if (!found) {
+            if (process.env.INSTALL_R_PKG_COMMAND && process.env.IS_AVAILABLE_R_PKG_COMMAND) {
+                res = run_with_exit_code(process.env.IS_AVAILABLE_R_PKG_COMMAND.replace('%%PKG%%', package));
+                if (res == 0) {
+                    res = run_with_exit_code(process.env.INSTALL_R_PKG_COMMAND.replace('%%PKG%%', package));
+                    if (res != 0) {
+                        actual_packages.push('"' + package + '"');
+                    }
+                }
+            } else {
+                actual_packages.push('"' + package + '"');
+            }
+        }
     })
 
     if (actual_packages.length > 0) {
         var cmd = '';
-        actual_packages.forEach(function(package) { cmd += 'if (!require(' + package + ')) { install.packages(' + package + ') }; '; } )
+        actual_packages.forEach(function(package) { cmd += 'if (!require(' + package + ')) { install.packages(' + package + ', repos="' + cran_mirror + '") }; '; } )
         //run_command('R -e \'install.packages(c(' + actual_packages.join() + '))\'');
         run_command('R -e \'' + cmd + '\'');
     }
@@ -128,20 +165,15 @@ function get_actual_name(name) {
     return dir + '/' + name + ".R";
 }
 
-var username = 'username';
-var password = 'password';
-var site_library = '/usr/local/lib/R/site-library/';
+var username = process.env.NAME || 'username';
+var password = process.env.PASSWORD || 'password';
+var site_library = process.env.R_SITE_LIBRARY || '/usr/local/lib/R/site-library:/usr/lib/R/site-library:/usr/lib/R/library';
+var cran_mirror = process.env.CRAN_MIRROR || 'http://cran.r-project.org';
 if (process.argv.length > 2) {
     username = process.argv[2];
-    if (process.argv.length > 3) {
+    if (process.argv.length > 3)
         password = process.argv[3];
-        if (process.argv.length > 4) {
-            site_library = process.argv[4];
-        }
-    }
 }
-if (!site_library.endsWith('/'))
-    site_library += '/';
 
 function secured(request, response) {
     var credentials = auth(request)
