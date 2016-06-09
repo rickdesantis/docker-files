@@ -1,6 +1,9 @@
 FROM rickdesantis/lxde
 MAINTAINER Riccardo B. Desantis <riccardobenito.desantis@gmail.com>
 
+# Setting the environment
+ENV HOSTNAME firefox.rickdesantis.docker.com
+
 # Update the repos and install all the used packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
     firefox && \

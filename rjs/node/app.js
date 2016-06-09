@@ -36,8 +36,7 @@ function file_exists(filePath) {
 }
 
 function run_command(command) {
-    console.log('Running the command...');
-    // console.log(command);
+    console.log('RUN:', command);
     exec(command, function(error, stdout, stderr) {
         if (error) {
             return 'Error while running the script.'; //error.code;
@@ -46,19 +45,28 @@ function run_command(command) {
     });
 }
 
+function install_r_package(package) {
+    if (!package)
+        return 'Empty package!';
+    console.log("INSTALL:", package);
+    if (!file_exists(site_library + package))
+        run_command('R -e \'install.packages("' + package + '", repos="' + repo + '")\'');
+}
+
 function r_execute(file) {
     if (!file || !file_exists(file))
         return 'File not found!';
 
-    console.log('Executing the given R script file...');
-    return run_command('Rscript ' + file);
+    console.log('EXEC:', file);
+    run_command('Rscript ' + file);
+    return 0;
 }
 
 function r_execute_body(body) {
     if (!body)
         return 'Empty body!';
 
-    console.log('Executing the given R code...');
+    console.log('EXEC: R code');
     // console.log(body);
     return r_execute(save_script(null, body));
 }
@@ -84,6 +92,10 @@ function save_script(name, body) {
     file.write(body);
     file.end();
 
+    body.split('library(').slice(1).forEach(function(str) {
+        install_r_package(str.substr(0, str.indexOf(')')));
+    });
+
     return tmpfile;
 }
 
@@ -106,11 +118,21 @@ function get_actual_name(name) {
 
 var username = 'username';
 var password = 'password';
+var site_library = '/usr/local/lib/R/site-library/';
+var repo = 'http://cran.r-project.org';
 if (process.argv.length > 2) {
     username = process.argv[2];
-    if (process.argv.length > 3)
+    if (process.argv.length > 3) {
         password = process.argv[3];
+        if (process.argv.length > 4) {
+            site_library = process.argv[4];
+            if (process.argv.length > 4)
+                repo = process.argv[5];
+        }
+    }
 }
+if (!site_library.endsWith('/'))
+    site_library += '/';
 
 function secured(request, response) {
     var credentials = auth(request)

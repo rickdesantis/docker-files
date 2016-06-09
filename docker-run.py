@@ -30,7 +30,7 @@ def docker_run(args):
         run('docker rm {container}'.format(container=args.container))
     if args.operation == 'start':
         run('docker pull rickdesantis/{container}'.format(container=args.container), False)
-        run('docker run --name {container} -p {vnc}:5901 -p {rdp}:3389 -p {http}:80 -e "GEOMETRY={g}" -e "PASSWORD={psw}" {folders} rickdesantis/{container}'.format(container=args.container, vnc=args.vnc, rdp=args.rdp, http=args.http, g=args.g, folders=folders, psw=args.psw), True)
+        run('docker run --name {container} -p {vnc}:5901 -p {rdp}:3389 -p {http}:80 -e GEOMETRY={g} -e PASSWORD={psw} {folders} rickdesantis/{container}'.format(container=args.container, vnc=args.vnc, rdp=args.rdp, http=args.http, g=args.g, folders=folders, psw=args.psw), True)
     elif args.operation == 'vnc' and is_container_running(args.container):
         run('open vnc://127.0.0.1:{vnc}'.format(vnc=args.vnc))
     elif args.operation == 'bash' and is_container_running(args.container):

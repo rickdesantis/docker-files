@@ -2,6 +2,7 @@ FROM centos:6.7
 MAINTAINER Riccardo B. Desantis <riccardobenito.desantis@gmail.com>
 
 # Setting the environment
+ENV HOSTNAME centos.rickdesantis.docker.com
 ENV USERHOME  /root
 ENV USER root
 
