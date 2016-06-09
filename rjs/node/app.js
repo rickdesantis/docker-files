@@ -45,12 +45,22 @@ function run_command(command) {
     });
 }
 
-function install_r_package(package) {
-    if (!package)
-        return 'Empty package!';
-    console.log("INSTALL:", package);
-    if (!file_exists(site_library + package))
-        run_command('R -e \'install.packages("' + package + '", repos="' + repo + '")\'');
+function install_r_packages(packages) {
+    if (!packages || packages.length == 0)
+        return 'No packages specified!';
+    console.log("INSTALL:", packages.join());
+    var actual_packages = [];
+    packages.forEach(function(package) {
+        if (!file_exists(site_library + package))
+            actual_packages.push('"' + package + '"');
+    })
+
+    if (actual_packages.length > 0) {
+        var cmd = '';
+        actual_packages.forEach(function(package) { cmd += 'if (!require(' + package + ')) { install.packages(' + package + ') }; '; } )
+        //run_command('R -e \'install.packages(c(' + actual_packages.join() + '))\'');
+        run_command('R -e \'' + cmd + '\'');
+    }
 }
 
 function r_execute(file) {
@@ -92,9 +102,11 @@ function save_script(name, body) {
     file.write(body);
     file.end();
 
+    packages = [];
     body.split('library(').slice(1).forEach(function(str) {
-        install_r_package(str.substr(0, str.indexOf(')')));
+        packages.push(str.substr(0, str.indexOf(')')));
     });
+    install_r_packages(packages);
 
     return tmpfile;
 }
@@ -119,15 +131,12 @@ function get_actual_name(name) {
 var username = 'username';
 var password = 'password';
 var site_library = '/usr/local/lib/R/site-library/';
-var repo = 'http://cran.r-project.org';
 if (process.argv.length > 2) {
     username = process.argv[2];
     if (process.argv.length > 3) {
         password = process.argv[3];
         if (process.argv.length > 4) {
             site_library = process.argv[4];
-            if (process.argv.length > 4)
-                repo = process.argv[5];
         }
     }
 }

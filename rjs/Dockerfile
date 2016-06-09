@@ -16,6 +16,8 @@ ENV R_SITE_LIBRARY /usr/local/lib/R/site-library/
 RUN apt-get update && apt-get install -y --no-install-recommends \
     r-base \
     r-base-dev \
+    libssl-dev \
+    libcurl4-openssl-dev \
     curl && \
     curl -sL https://deb.nodesource.com/setup_6.x | bash - && \
     apt-get install -y --no-install-recommends nodejs && \
@@ -38,7 +40,7 @@ RUN printf "%b\n" "local({\n\tr <- getOption(\"repos\")\n\tr[\"CRAN\"] <- \"$CRA
 
 # Starts the Node.JS server
 EXPOSE 80
-CMD nodejs app.js $NAME $PASSWORD $R_SITE_LIBRARY $CRAN_MIRROR | tee app.log
+CMD nodejs app.js $NAME $PASSWORD $R_SITE_LIBRARY | tee app.log
 
 # Build: docker build -t rjs1 ../rjs
 # Run:   docker run --name=rjs1 -p 80:80 rjs1 &
