@@ -90,6 +90,31 @@ function install_r_packages(packages) {
     })
 }
 
+function is_runnable(file) {
+    if (!file || !file_exists(file))
+        return 'File not found!';
+    console.log("IS RUNNABLE:", file);
+
+    var body = fs.readFileSync(file).toString();
+
+    body.split('library(').slice(1).forEach(function(str, i, vett) {
+        package = str.substr(0, str.indexOf(')'));
+
+        var found = false;
+        site_library.split(':').forEach(function(path) {
+            found = found || file_exists(path + '/' + package);
+        });
+
+        if (!found) {
+            return "Dependencies not installed!";
+        }
+
+        if (i >= vett.length - 1)
+            return 0;
+
+    });
+}
+
 function r_execute(file) {
     if (!file || !file_exists(file))
         return 'File not found!';
@@ -178,7 +203,7 @@ function secured(request, response) {
     return true;
 }
 
-app.put('/rest/api/v1/r/:filename', function(request, response) {
+app.put('/rest/api/v1/r/file/:filename', function(request, response) {
     // console.log(request.query);
     // console.log(request.params);
     // console.log(request.body);
@@ -211,7 +236,7 @@ app.put('/rest/api/v1/r/:filename', function(request, response) {
     return;
 });
 
-app.get('/rest/api/v1/r/:filename', function(request, response) {
+app.get('/rest/api/v1/r/execute/:filename', function(request, response) {
     // console.log(request.query);
     // console.log(request.params);
     // console.log(request.body);
@@ -242,7 +267,38 @@ app.get('/rest/api/v1/r/:filename', function(request, response) {
     return;
 });
 
-app.delete('/rest/api/v1/r/:filename', function(request, response) {
+app.get('/rest/api/v1/r/is_runnable/:filename', function(request, response) {
+    // console.log(request.query);
+    // console.log(request.params);
+    // console.log(request.body);
+
+    if (!secured(request, response))
+        return;
+
+    var err = null;
+
+    var filename = request.params.filename;
+
+    var res = is_runnable(get_actual_name(filename));
+    if (res != 0)
+        err = res;
+
+    if (err) {
+        response.status(500);
+        response.setHeader('Content-Type', 'text/plain');
+        response.write('Error: ' + err);
+        response.end();
+        return;
+    }
+
+    response.status(200);
+    response.setHeader('Content-Type', 'text/plain');
+    response.write('OK!');
+    response.end();
+    return;
+});
+
+app.delete('/rest/api/v1/r/file/:filename', function(request, response) {
     // console.log(request.query);
     // console.log(request.params);
     // console.log(request.body);
