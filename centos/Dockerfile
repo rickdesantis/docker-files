@@ -8,11 +8,10 @@ ENV USER root
 
 WORKDIR $USERHOME
 # Update the repos and install all the used packages
-RUN yum update -y -q && \
-    touch /tmp/empty
+RUN yum update -y -q
 
 # Fake command
-CMD tail -F /tmp/empty
+CMD tail -F /dev/zero
 
 # Build: docker build -t centos1 ../centos
 # Run:   docker run --name=centos1 centos1 &
