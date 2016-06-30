@@ -1,4 +1,4 @@
-FROM rickdesantis/lxde
+FROM rickdesantis/ubuntu-lxde
 MAINTAINER Riccardo B. Desantis <riccardobenito.desantis@gmail.com>
 
 # Setting the environment
