@@ -38,7 +38,7 @@ def docker_run(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Runs the containers uploaded by the docker hub user rickdesantis.')
-    parser.add_argument("container", help='the name of the container that will be run', choices=['firefox', 'centos', 'centos-xfce', 'ubuntu-lxde', 'rjs', 'arch'])
+    parser.add_argument("container", help='the name of the container that will be run', choices=['firefox', 'centos', 'centos-xfce', 'ubuntu-lxde', 'rjs'])
     parser.add_argument("-g", help='the screen resolution that will be used', default='1440x900')
     parser.add_argument("-psw", help='the password that will be used', default='docker')
     parser.add_argument("-vnc", help='the port used by VNC', default='5901')
