@@ -2,7 +2,7 @@ FROM ubuntu:16.04
 MAINTAINER Riccardo B. Desantis <riccardobenito.desantis@gmail.com>
 
 # Setting the environment
-ENV HOSTNAME lxde.rickdesantis.docker.com
+ENV HOSTNAME ubuntu.rickdesantis.docker.com
 ENV USERHOME  /root
 ENV DEBIAN_FRONTEND noninteractive
 ENV USER root
