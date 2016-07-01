@@ -28,7 +28,7 @@ RUN echo $PASSWORD > password.txt && \
 
 # Starts the VNC server
 EXPOSE 5901
-CMD service xrdp start && vncserver :1 -desktop XFCE -geometry $GEOMETRY -depth 24 -dpi 100 && tail -F /root/.vnc/*.log
+CMD vncserver :1 -desktop XFCE -geometry $GEOMETRY -depth 24 -dpi 100 && tail -F /root/.vnc/*.log
 
 # Build: docker build -t centos1 ../centos
 # Run:   docker run --name=centos1 centos1 &
