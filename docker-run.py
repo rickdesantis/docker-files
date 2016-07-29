@@ -30,7 +30,7 @@ def docker_run(args):
         run('docker rm {container}'.format(container=args.container))
     if args.operation == 'start':
         run('docker pull rickdesantis/{container}'.format(container=args.container), False)
-        run('docker run --name {container} -p {vnc}:5901 -p {rdp}:3389 -p {http}:80 -e GEOMETRY={g} -e PASSWORD={psw} {folders} rickdesantis/{container} {cmd}'.format(container=args.container, vnc=args.vnc, rdp=args.rdp, http=args.http, g=args.g, folders=folders, psw=args.psw, cmd=args.cmd), True)
+        run('docker run --name {container} -p {vnc}:5901 -p {rdp}:3389 -p {http}:80 -p {couchdb}:5984 -e GEOMETRY={g} -e PASSWORD={psw} {folders} rickdesantis/{container} {cmd}'.format(container=args.container, vnc=args.vnc, rdp=args.rdp, http=args.http, g=args.g, folders=folders, psw=args.psw, cmd=args.cmd, couchdb=args.couchdb), True)
     elif args.operation == 'vnc' and is_container_running(args.container):
         run('open vnc://127.0.0.1:{vnc}'.format(vnc=args.vnc))
     elif args.operation == 'bash' and is_container_running(args.container):
@@ -40,12 +40,13 @@ def docker_run(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Runs the containers uploaded by the docker hub user rickdesantis.')
-    parser.add_argument("container", help='the name of the container that will be run', choices=['firefox', 'centos', 'centos-xfce', 'ubuntu-lxde', 'rjs'])
+    parser.add_argument("container", help='the name of the container that will be run', choices=['firefox', 'centos', 'centos-xfce', 'ubuntu-lxde', 'rjs', 'couchdb'])
     parser.add_argument("-g", help='the screen resolution that will be used', default='1440x900')
     parser.add_argument("-psw", help='the password that will be used', default='docker')
     parser.add_argument("-vnc", help='the port used by VNC', default='5901')
     parser.add_argument("-rdp", help='the port used by RDP', default='3389')
     parser.add_argument("-http", help='the port used by HTTP', default='80')
+    parser.add_argument("-couchdb", help='the port used by CouchDB', default='5984')
     parser.add_argument("-operation", help='the operation on the container', default='start', choices=['start', 'stop', 'vnc', 'bash','exec'])
     parser.add_argument('-mount', nargs='+', help='folders to be mount (<local path>:<container path> separated by spaces')
     parser.add_argument('-cmd', help='the command to be run', default='')
