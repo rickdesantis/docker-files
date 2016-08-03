@@ -1,18 +1,18 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import argparse
 import subprocess
 
 def run(command, background=False):
-    print command
+    print(command)
     if background:
         subprocess.Popen(command.split())
     else:
-        return subprocess.call(command.split())
+        return subprocess.run(command.split()).returncode
 
 def is_container_running(container):
     try:
-        output = subprocess.check_output("docker ps | awk '{{print $2}}' | grep {}".format(container), shell=True)
+        output = subprocess.run("docker ps -a | awk '{{print $2}}' | grep {}".format(container), shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).stdout
         return True
     except subprocess.CalledProcessError:
         return False
@@ -30,7 +30,7 @@ def docker_run(args):
         run('docker rm {args.container}'.format(args=args))
     if args.operation == 'start':
         run('docker pull rickdesantis/{args.container}'.format(args=args), False)
-        run('docker run --name {args.container} -p {args.vnc}:5901 -p {args.rdp}:3389 -p {args.http}:80 -p {args.couchdb}:5984 -e GEOMETRY={args.g} -e PASSWORD={args.psw} -e DB_HOSTNAME={args.dbhost} -e DB_NAME={args.dbname} -e DB_USER={args.dbuser} -e DB_PASSWORD={args.dbpassword} -e DB_PORT={args.dbport} {args.folders} rickdesantis/{args.container} {args.cmd}'.format(args=args), True)
+        run('docker run --name {args.container} -p {args.vnc}:5901 -p {args.rdp}:3389 -p {args.http}:80 -p {args.couchdb}:5984 -e GEOMETRY={args.g} -e PASSWORD={args.psw} -e DB_HOSTNAME={args.dbhost} -e DB_NAME={args.dbname} -e DB_USER={args.dbuser} -e DB_PASSWORD={args.dbpassword} -e DB_PORT={args.dbport} {folders} -{args.mode} rickdesantis/{args.container} {args.cmd}'.format(args=args, folders=folders), args.mode == 'd')
     elif args.operation == 'vnc' and is_container_running(args.container):
         run('open vnc://127.0.0.1:{args.vnc}'.format(args=args))
     elif args.operation == 'bash' and is_container_running(args.container):
@@ -52,6 +52,7 @@ if __name__ == "__main__":
     parser.add_argument("-dbname", help='the database name', default='BLUDB')
     parser.add_argument("-dbuser", help='the database username', default='')
     parser.add_argument("-dbpassword", help='the database password', default='')
+    parser.add_argument("-mode", help='the running mode', choices=['d', 'it'], default='d')
     parser.add_argument("-operation", help='the operation on the container', default='start', choices=['start', 'stop', 'vnc', 'bash','exec'])
     parser.add_argument('-mount', nargs='+', help='folders to be mount (<local path>:<container path> separated by spaces')
     parser.add_argument('-cmd', help='the command to be run', default='')
