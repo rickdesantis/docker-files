@@ -2,6 +2,8 @@
 
 import argparse
 import subprocess
+import json
+import sys
 
 def run(command, background=False):
     print(command)
@@ -20,6 +22,20 @@ def is_container_running(container):
 def docker_run(args):
     if args == None:
         return
+
+    if args.load or args.save:
+        with open('docker-run.json', 'a') as f:
+            pass
+        with open('docker-run.json', 'r+') as f:
+            try:
+                tmp = json.load(f)
+            except:
+                tmp = {}
+            if args.load:
+                args = parser.parse_args(tmp[args.container])
+            elif args.save:
+                tmp[args.container] = sys.argv[1:]
+                json.dump(tmp, f)
 
     folders = ''
     if args.mount != None:
@@ -56,5 +72,7 @@ if __name__ == "__main__":
     parser.add_argument("-operation", help='the operation on the container', default='start', choices=['start', 'stop', 'vnc', 'bash','exec'])
     parser.add_argument('-mount', nargs='+', help='folders to be mount (<local path>:<container path> separated by spaces')
     parser.add_argument('-cmd', help='the command to be run', default='')
+    parser.add_argument('-save', help='the list of parameters will be saved for the container', action='store_true')
+    parser.add_argument('-load', help='the list of parameters for the container will be loaded', action='store_true')
     args = parser.parse_args()
     docker_run(args)
