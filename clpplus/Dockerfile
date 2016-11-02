@@ -16,6 +16,7 @@ ENV DB_NAME BLUDB
 WORKDIR $USERHOME
 # Update the repos and install all the used packages
 RUN apk update && apk add --no-cache \
+    bash \
     mksh \
     libxml2 \
     unzip \
@@ -33,7 +34,9 @@ RUN mv clpplus clpplus-orig && \
     printf "%b\n" '#!'"`which env` sh\n\ncd $USERHOME/dsdriver/bin\nif [ \$# -eq 0 ]; then\nsh ../db2profile && exec clpplus-orig -nw \$DB_USER/\$DB_PASSWORD@\$DB_HOSTNAME:\$DB_PORT/\$DB_NAME\nelse\nsh ../db2profile && exec clpplus-orig -nw \"\$@\"\nfi" > clpplus && \
     chmod +x clpplus
 
-ENTRYPOINT [ "clpplus" ]
+#ENTRYPOINT [ "clpplus" ]
+RUN touch /tmp/empty
+CMD tail -f /tmp/empty
 
 # Build: docker build -t clpplus1 ../clpplus
 # Run:   docker run --name=clpplus1 -it clpplus1 <user>/<password>@<host>:<port | 50000>/<dbname | BLUDB>
