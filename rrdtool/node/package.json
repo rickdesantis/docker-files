@@ -1,0 +1,35 @@
+{
+  "name": "RRD.js",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "start": "node --turbo --harmony --max_old_space_size=2000 --gc_interval=100 app.js"
+  },
+  "dependencies": {
+    "async": "2.x",
+    "body-parser": "1.x",
+    "commander": "2.x",
+    "compression": "1.x",
+    "connect-multiparty": "2.x",
+    "cookie-parser": "1.x",
+    "cradle": "0.x",
+    "errorhandler": "1.x",
+    "express": "4.x",
+    "helmet": "2.x",
+    "log4js": "0.x",
+    "method-override": "2.x",
+    "moment": "2.x",
+    "morgan": "1.x"
+  },
+  "repository": {},
+  "engines": {
+    "node": ">=6.5",
+    "npm": ">=3.10"
+  },
+  "devDependencies": {
+    "eslint": "^3.8.1",
+    "eslint-config-standard": "^6.2.0",
+    "eslint-plugin-promise": "^3.3.0",
+    "eslint-plugin-standard": "^2.0.1"
+  }
+}

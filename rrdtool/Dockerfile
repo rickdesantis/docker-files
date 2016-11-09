@@ -1,4 +1,4 @@
-FROM ubuntu:latest
+FROM ibmcom/ibmnode:latest
 MAINTAINER Riccardo B. Desantis <riccardobenito.desantis@gmail.com>
 
 # Setting the environment
@@ -8,34 +8,43 @@ ENV DEBIAN_FRONTEND noninteractive
 ENV USER root
 ENV NAME docker
 ENV PASSWORD docker
+ENV PORT 3000
+ENV S_PORT 4000
+ENV EXEC_PATH /opt/rrdtool/bin
+ENV DATA_PATH /opt/rrd-data
 
 # Update the repos and install all the used packages
 RUN apt-get update && \
-    (apt-get install -y --no-install-recommends curl build-essential libglib2.0-dev libxml2-dev libpango1.0-dev openssh-server groff; \
-    while [ $? -ne 0 ]; do apt-get install -y --no-install-recommends curl build-essential libglib2.0-dev libxml2-dev libpango1.0-dev openssh-server groff; done) && \
+    (apt-get install -y --no-install-recommends curl build-essential libglib2.0-dev libxml2-dev libpango1.0-dev groff; \
+    while [ $? -ne 0 ]; do apt-get install -y --no-install-recommends curl build-essential libglib2.0-dev libxml2-dev libpango1.0-dev groff; done) && \
     apt-get autoclean && \
     apt-get autoremove && \
     rm -rf /var/lib/apt/lists/*
 
+# Fixes Node.JS on Docker
+RUN cd $(npm root -g)/npm  && \
+    npm install fs-extra && \
+    sed -i -e s/graceful-fs/fs-extra/ -e s/fs.rename/fs.move/ ./lib/utils/rename.js
+
 # Download and install RDDTool
 WORKDIR $USERHOME
-RUN mkdir .ssh && \
-    mkdir /var/run/sshd && \
-    echo 'root:'${PASSWORD} | chpasswd && \
-    sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && \
-    curl http://oss.oetiker.ch/rrdtool/pub/rrdtool-1.6.0.tar.gz -OL && \
+RUN curl http://oss.oetiker.ch/rrdtool/pub/rrdtool-1.6.0.tar.gz -OL && \
     tar zxf rrdtool-1.6.0.tar.gz && \
     mkdir -p /opt/rrdtool && \
     cd rrdtool-1.6.0 && ./configure --prefix=/opt/rrdtool && make && make install
 
-WORKDIR /opt/rrdtool
+# Copy the Node.JS application and install the dependencies
+COPY node $USERHOME/node
+WORKDIR $USERHOME/node
+RUN npm install
 
-# Starts the SSH server
-EXPOSE 22
-CMD /usr/sbin/sshd -D
+# Starts the Node.JS server
+EXPOSE $PORT
+EXPOSE $S_PORT
+CMD npm start
 
-# Build: docker build -t rrdtool ../rrdtool
-# Run:   docker run --name=rrdtool -p 22:22 rrdtool &
-# Bash:  docker exec -it rrdtool bash
-# Start: docker start rrdtool
-# Stop:  docker stop rrdtool
+# Build: docker build -t database-ts ../database-ts
+# Run:   docker run --name=database-ts -p 3000:3000 database-ts &
+# Bash:  docker exec -it database-ts bash
+# Start: docker start database-ts
+# Stop:  docker stop database-ts
