@@ -8,9 +8,9 @@ ENV DEBIAN_FRONTEND noninteractive
 ENV USER root
 ENV NAME docker
 ENV PASSWORD docker
-ENV PORT 3000
-ENV S_PORT 4000
-ENV EXEC_PATH /opt/rrdtool/bin
+ENV PORT 13910
+ENV S_PORT 13911
+ENV RRD_PATH /opt/rrdtool
 ENV DATA_PATH /opt/rrd-data
 
 # Update the repos and install all the used packages
@@ -30,8 +30,8 @@ RUN cd $(npm root -g)/npm  && \
 WORKDIR $USERHOME
 RUN curl http://oss.oetiker.ch/rrdtool/pub/rrdtool-1.6.0.tar.gz -OL && \
     tar zxf rrdtool-1.6.0.tar.gz && \
-    mkdir -p /opt/rrdtool && \
-    cd rrdtool-1.6.0 && ./configure --prefix=/opt/rrdtool && make && make install
+    mkdir -p $RRD_PATH && \
+    cd rrdtool-1.6.0 && ./configure --prefix=$RRD_PATH && make && make install
 
 # Copy the Node.JS application and install the dependencies
 COPY node $USERHOME/node
@@ -41,10 +41,10 @@ RUN npm install
 # Starts the Node.JS server
 EXPOSE $PORT
 EXPOSE $S_PORT
-CMD npm start
+CMD $RRD_PATH/bin/rrdcached -L -F && npm run-script pm2-start
 
 # Build: docker build -t database-ts ../database-ts
-# Run:   docker run --name=database-ts -p 3000:3000 database-ts &
+# Run:   docker run --name=database-ts -p 13910:13910 -p 13911:13911 database-ts &
 # Bash:  docker exec -it database-ts bash
 # Start: docker start database-ts
 # Stop:  docker stop database-ts

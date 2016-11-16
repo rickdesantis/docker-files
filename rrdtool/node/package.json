@@ -3,7 +3,11 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "start": "node --turbo --harmony --max_old_space_size=2000 --gc_interval=100 app.js"
+    "start": "node --turbo --harmony --max_old_space_size=2000 --gc_interval=100 app.js",
+    "pm2-start": "pm2 start npm --name=\"rrd-js\" -- start && pm2 logs rrd-js",
+    "pm2-stop": "pm2 stop rrd-js ; pm2 delete rrd-js",
+    "pm2-restart": "pm2 restart rrd-js",
+    "test": "standard"
   },
   "dependencies": {
     "async": "2.x",
@@ -19,7 +23,8 @@
     "log4js": "0.x",
     "method-override": "2.x",
     "moment": "2.x",
-    "morgan": "1.x"
+    "morgan": "1.x",
+    "pm2": "2.x"
   },
   "repository": {},
   "engines": {
@@ -27,9 +32,6 @@
     "npm": ">=3.10"
   },
   "devDependencies": {
-    "eslint": "^3.8.1",
-    "eslint-config-standard": "^6.2.0",
-    "eslint-plugin-promise": "^3.3.0",
-    "eslint-plugin-standard": "^2.0.1"
+    "standard": "*"
   }
 }
