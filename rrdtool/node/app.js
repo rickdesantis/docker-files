@@ -25,7 +25,7 @@ http.globalAgent.maxSockets = Infinity
 app.set('port', process.env.PORT)
 app.use(require('morgan')('dev'))
 app.use(bodyParser.urlencoded({ extended: true }))
-app.use(bodyParser.json())
+// app.use(bodyParser.json())
 app.use(require('method-override')())
 // app.use('/', express.static(path.join(__dirname, '/public')));
 
