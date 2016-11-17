@@ -11,7 +11,7 @@ let router = express.Router()
 
 router.use(require('morgan')('dev'))
 router.use(bodyParser.urlencoded({ extended: true }))
-router.use(bodyParser.json())
+// router.use(bodyParser.json())
 router.use(require('method-override')())
 
 // development only
