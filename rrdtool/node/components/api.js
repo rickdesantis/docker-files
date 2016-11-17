@@ -154,7 +154,7 @@ router.put('/data/:machine/:analyzer', secured, function (req, res) {
   if (!req.body || req.body.length === 0) {
     return res.status(500).send('Empty body.')
   }
-  _putData({machine: req.params.machine, analyzer: req.params.analyzer}, req.body, function (err) {
+  _putData({machine: req.params.machine, analyzer: req.params.analyzer}, JSON.stringify(req.body), function (err) {
     if (err) {
       return res.status(500).send(err)
     } else {
