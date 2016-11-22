@@ -80,20 +80,11 @@ function exec (cmd, callback) {
 
 const analyzers = [ 'ao', 'ai', 'ss', 'a2s' ]
 
-router.get('/data/:machine/:analyzer/:variables', secured, function (req, res) {
-  let variables = []
-  if (req.params.variables.startsWith('[') && req.params.variables.endsWith(']')) {
-    req.params.variables.substring(1, req.params.variables.length - 1).split(',').forEach(function (variable) {
-      if (analyzers.indexOf(req.params.analyzer) !== -1) {
-        variables.push({ 'variable': variable, 'machine': req.params.machine, 'analyzer': req.params.analyzer })
-      }
-    })
-  } else {
-    if (analyzers.indexOf(req.params.analyzer) !== -1) {
-      variables.push({ 'variable': req.params.variables, 'machine': req.params.machine, 'analyzer': req.params.analyzer })
-    }
+router.get('/data/:machine/:analyzer', secured, function (req, res) {
+  if (analyzers.indexOf(req.params.analyzer) === -1) {
+    return res.status(500).send(new Error('Analyzer not handled.'))
   }
-  _getData(variables, req.query.from, req.query.to, req.query.values, function (err, body) {
+  _getData(req.query.machine, req.query.analyzer, req.query.from, req.query.to, req.query.values, function (err, body) {
     if (err) {
       return res.status(500).send(err)
     } else {
@@ -102,59 +93,50 @@ router.get('/data/:machine/:analyzer/:variables', secured, function (req, res) {
   })
 })
 
-router.get('/data/:machine/:variables', secured, function (req, res) {
-  let variables = []
-  if (req.params.variables.startsWith('[') && req.params.variables.endsWith(']')) {
-    req.params.variables.substring(1, req.params.variables.length - 1).split(',').forEach(function (variable) {
-      let tmp = variable.split('@')
-      if (tmp.length === 2 && analyzers.indexOf(tmp[1]) !== -1) {
-        variables.push({ 'variable': tmp[0], 'machine': req.params.machine, 'analyzer': tmp[1] })
-      }
-    })
-  } else {
-    let tmp = req.params.variables.split('@')
-    if (tmp.length === 2 && analyzers.indexOf(tmp[1]) !== -1) {
-      variables.push({ 'variable': tmp[0], 'machine': req.params.machine, 'analyzer': tmp[1] })
-    }
-  }
-  _getData(variables, req.query.from, req.query.to, req.query.values, function (err, body) {
-    if (err) {
-      return res.status(500).send(err)
-    } else {
-      return res.status(200).json(body)
-    }
-  })
-})
+const _columnNames = {
+  'V L1-N (V)': 'V_L1_N',
+  'V L2-N (V)': 'V_L2_N',
+  'V L3-N (V)': 'V_L3_N',
+  'W tot (W)': 'W_TOT',
+  'VAR tot (VAR)': 'VAR_TOT',
+  'Energy (kWh)': 'KWh',
 
-router.get('/data/:variables', secured, function (req, res) {
-  let variables = []
-  if (req.params.variables.startsWith('[') && req.params.variables.endsWith(']')) {
-    req.params.variables.substring(1, req.params.variables.length - 1).split(',').forEach(function (variable) {
-      let tmp = variable.split('@')
-      if (tmp.length === 3 && analyzers.indexOf(tmp[2]) !== -1) {
-        variables.push({ 'variable': tmp[0], 'machine': tmp[1], 'analyzer': tmp[2] })
-      }
-    })
-  } else {
-    let tmp = req.params.variables.split('@')
-    if (tmp.length === 3 && analyzers.indexOf(tmp[2]) !== -1) {
-      variables.push({ 'variable': tmp[0], 'machine': tmp[1], 'analyzer': tmp[2] })
-    }
-  }
-  _getData(variables, req.query.from, req.query.to, req.query.values, function (err, body) {
-    if (err) {
-      return res.status(500).send(err)
-    } else {
-      return res.status(200).json(body)
-    }
-  })
-})
+  'V L1-L2 (V)': 'V_L1_L2',
+  'V L2-L3 (V)': 'V_L2_L3',
+  'V L3-L1 (V)': 'V_L3_L1',
+  'V tot (V)': 'V_TOT',
+  'A-L1 (A)': 'A_L1',
+  'A-L2 (A)': 'A_L2',
+  'A-L3 (A)': 'A_L3',
+  'A max (A)': 'A_MAX',
+  'A n (A)': 'A_N',
+  'P-L1 (W)': 'W_L1',
+  'P-L2 (W)': 'W_L2',
+  'P-L3 (W)': 'W_L3',
+  'VA L1 (VA)': 'VA_L1',
+  'VA L2 (VA)': 'VA_L2',
+  'VA L3 (VA)': 'VA_L3',
+  'VA tot (VA)': 'VA_TOT',
+  'VAR L1 (VAR)': 'VAR_L1',
+  'VAR L2 (VAR)': 'VAR_L2',
+  'VAR L3 (VAR)': 'VAR_L3',
+  'Reactive Energy (KVARh)': 'KVARh',
+  'Frequency (Hz)': 'HZ',
+
+  'Simple voltage:V1 (V)': 'V_L1_N',
+  'Simple voltage:V2 (V)': 'V_L2_N',
+  'Simple voltage:V3 (V)': 'V_L3_N',
+  'Module temperature (°C)': 'TEMP'
+}
 
 router.put('/data/:machine/:analyzer', secured, function (req, res) {
   if (!req.body || req.body.length === 0) {
     return res.status(500).send('Empty body.')
   }
-  _putData({machine: req.params.machine, analyzer: req.params.analyzer}, JSON.stringify(req.body), function (err) {
+  if (analyzers.indexOf(req.params.analyzer) === -1) {
+    return res.status(500).send(new Error('Analyzer not handled.'))
+  }
+  _putData(req.params.machine, req.params.analyzer, req.body, function (err) {
     if (err) {
       return res.status(500).send(err)
     } else {
@@ -163,43 +145,116 @@ router.put('/data/:machine/:analyzer', secured, function (req, res) {
   })
 })
 
-function _putData (variable, body, callback) {
+let __infoCache = {}
+
+function _getInfo (machine, analyzer, callback) {
   if (!callback) {
     logger.debug('No callback provided.')
     return
   }
-  if (!variable || !variable.machine || !variable.analyzer || !body) {
+  if (!machine || !analyzer) {
     logger.debug('Data not valid.')
-    callback('Data not valid.', null)
+    callback(new Error('Data not valid.'), null)
+    return
+  }
+  if (__infoCache[machine + '@' + analyzer]) {
+    callback(null, __infoCache[machine + '@' + analyzer])
+    return
   }
 
   let inizio = moment()
 
-  let cmd = `${process.env.EXEC_PATH}/rrdtool update ${process.env.DATA_PATH}/ee${variable.machine}_${variable.analyzer}.rrd ${body}`
+  let cmd = `${process.env.RRD_PATH}/bin/rrdtool info ${process.env.DATA_PATH}/ee${machine}_${analyzer}.rrd | grep type`
 
   exec(cmd, function (err, body) {
+    let result = []
     if (err) {
       logger.error('Error while executing the command.')
       console.warn(err)
+    } else {
+      body.split('\n').forEach(function (row) {
+        if (row && row.length > 0 && row.indexOf('[') > -1) {
+          let tmp = {
+            name: row.split('[')[1].split(']')[0],
+            type: row.split('[')[1].split(']')[1].split('"')[1]
+          }
+          result.push(tmp)
+        }
+      })
     }
-    callback(err, body)
-    logger.trace(`_putData(${JSON.stringify(variable)}) took ${duration(inizio, moment())}.`)
+    if (!err) {
+      __infoCache[machine + '@' + analyzer] = result
+    }
+    callback(err, result)
+    logger.trace(`_getInfo('${machine}', '${analyzer}') took ${duration(inizio, moment())}.`)
     return
   })
 }
 
-function _getData (variables, from, to, values, callback) {
+function _putData (machine, analyzer, body, callback) {
   if (!callback) {
     logger.debug('No callback provided.')
     return
   }
-  if (variables.length === 0) {
-    if (callback) {
-      callback('No variables found.')
-    } else {
-      logger.error('No variables found.')
-    }
+  if (!machine || !analyzer || !body) {
+    logger.debug('Data not valid.')
+    callback(new Error('Data not valid.'))
+    return
+  }
 
+  let inizio = moment()
+
+  _getInfo(machine, analyzer, function (err, data) {
+    if (err) {
+      callback(err)
+      return
+    } else {
+      if (body['Date/hour']) {
+        let result = []
+        result.push(moment.utc(body['Date/hour']).format('X'))
+        for (let j = 0; j < data.length; ++j) {
+          let key = data[j].name
+          let bodyKey
+          for (let i = 0; i < Object.keys(_columnNames).length && !bodyKey; ++i) {
+            let tmp = Object.keys(_columnNames)[i]
+            if (_columnNames[tmp] === key) {
+              bodyKey = tmp
+            }
+          }
+          if (bodyKey) {
+            let tmp = body[bodyKey]
+            if (data[j].type === 'COUNTER') {
+              tmp = Math.round(tmp)
+            }
+            result.push(tmp)
+          }
+        }
+        let cmd = `${process.env.RRD_PATH}/bin/rrdtool update ${process.env.DATA_PATH}/ee${machine}_${analyzer}.rrd ${body}`
+
+        exec(cmd, function (err, body) {
+          if (err) {
+            logger.error('Error while executing the command.')
+            console.warn(err)
+          }
+          callback(err)
+          logger.trace(`_putData('${machine}', '${analyzer}') took ${duration(inizio, moment())}.`)
+          return
+        })
+      } else {
+        callback(new Error('No date/hour found.'))
+      }
+    }
+  })
+}
+
+function _getData (machine, analyzer, from, to, values, callback) {
+  if (!callback) {
+    logger.debug('No callback provided.')
+    return
+  }
+  if (!machine || !analyzer) {
+    logger.debug('Data not valid.')
+    callback(new Error('Data not valid.'), null)
     return
   }
 
@@ -209,57 +264,73 @@ function _getData (variables, from, to, values, callback) {
   to = to || 'now'
   values = values || 1000
 
-  let cmd = `${process.env.EXEC_PATH}/rrdtool xport --start ${from} --end ${to} --maxrows ${values} --json`
-  variables.forEach(function (variable) {
-    let varName = variable.variable.split('(')[0].trim().toUpperCase().replace(/ /g, '_')
-    cmd += ` DEF:${varName}=${process.env.DATA_PATH}/ee${variable.machine}_${variable.analyzer}.rrd:${varName}:AVERAGE`
-  })
-  variables.forEach(function (variable) {
-    let varName = variable.variable.split('(')[0].trim().toUpperCase().replace(/ /g, '_')
-    cmd += ` XPORT:${varName}:"${variable.variable}"`
-  })
-
-  exec(cmd, function (err, body) {
-    if (!err) {
-      try {
-        body = JSON.parse(body)
-      } catch (e) {
-        err = e
-      }
-    }
+  _getInfo(machine, analyzer, function (err, data) {
     if (err) {
-      logger.error('Error while executing the command.')
-      console.warn(err)
-
-      callback(err, null)
-      logger.trace(`_getData(${JSON.stringify(variables)}, "${from}", "${to}") took ${duration(inizio, moment())}.`)
+      callback(err, [])
       return
     }
-
-    let result = []
-    let timestamp = body.meta.start
-    let step = body.meta.step
-    let legend = body.meta.legend
-    body.data.forEach(function (row) {
-      let atLeastOne = false
-      let tmp = {
-        '_id': timestamp,
-        'Date/hour': moment.unix(timestamp).utc().toISOString()
-      }
-      for (let i = 0; i < row.length; ++i) {
-        if (row[i]) {
-          atLeastOne = true
+    let cmd = `${process.env.RRD_PATH}/bin/rrdtool xport --start ${from} --end ${to} --maxrows ${values} --json`
+    data.forEach(function (variable) {
+      cmd += ` DEF:${variable.name}=${process.env.DATA_PATH}/ee${machine}_${analyzer}.rrd:${variable.name}:AVERAGE`
+    })
+    data.forEach(function (variable) {
+      let key = variable.name
+      let givenBodyKey
+      for (let i = 0; i < Object.keys(_columnNames).length && !givenBodyKey; ++i) {
+        let tmp = Object.keys(_columnNames)[i]
+        if (_columnNames[tmp] === key) {
+          givenBodyKey = tmp
         }
-        tmp[legend[i]] = row[i]
       }
-      if (atLeastOne) {
-        result.push(tmp)
+      if (givenBodyKey) {
+        cmd += ` XPORT:${variable.name}:"${givenBodyKey}"`
+      } else {
+        cmd += ` XPORT:${variable.name}:"${variable.name}"`
       }
-      timestamp += step
     })
 
-    callback(null, result)
-    logger.trace(`_getData(${JSON.stringify(variables)}, "${from}", "${to}") took ${duration(inizio, moment())}.`)
+    exec(cmd, function (err, body) {
+      if (!err) {
+        try {
+          body = JSON.parse(body)
+        } catch (e) {
+          err = e
+        }
+      }
+      if (err) {
+        logger.error('Error while executing the command.')
+        console.warn(err)
+
+        callback(err, null)
+        logger.trace(`_getData('${machine}', '${analyzer}', '${from}', '${to}') took ${duration(inizio, moment())}.`)
+        return
+      }
+
+      let result = []
+      let timestamp = body.meta.start
+      let step = body.meta.step
+      let legend = body.meta.legend
+      body.data.forEach(function (row) {
+        let atLeastOne = false
+        let tmp = {
+          '_id': timestamp,
+          'Date/hour': moment.unix(timestamp).utc().toISOString()
+        }
+        for (let i = 0; i < row.length; ++i) {
+          if (row[i]) {
+            atLeastOne = true
+          }
+          tmp[legend[i]] = row[i]
+        }
+        if (atLeastOne) {
+          result.push(tmp)
+        }
+        timestamp += step
+      })
+
+      callback(null, result)
+      logger.trace(`_getData('${machine}', '${analyzer}', '${from}', '${to}') took ${duration(inizio, moment())}.`)
+    })
   })
 }
 
