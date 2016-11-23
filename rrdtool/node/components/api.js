@@ -351,7 +351,7 @@ function _getData (machine, analyzer, from, to, values, fields, callback) {
       body.data.forEach(function (row) {
         let atLeastOne = false
         let tmp = {
-          '_id': timestamp,
+          '_id': (parseInt(timestamp) * 1000).toString(),
           'Date/hour': moment.unix(timestamp).utc().toISOString()
         }
         for (let i = 0; i < row.length; ++i) {
