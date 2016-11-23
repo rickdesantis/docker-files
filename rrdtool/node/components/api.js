@@ -247,7 +247,7 @@ function _putData (machine, analyzer, body, callback) {
     logger.debug('No callback provided.')
     return
   }
-  if (!machine || !analyzer || !body) {
+  if (!machine || !analyzer || !body || (Array.isArray(body) && body.length === 0)) {
     logger.debug('Data not valid.')
     callback(new Error('Data not valid.'))
     return
@@ -260,23 +260,33 @@ function _putData (machine, analyzer, body, callback) {
       callback(err)
       return
     } else {
-      if (body['Date/hour']) {
-        let input = []
-        input.push(moment.utc(body['Date/hour']).format('X'))
-        for (let j = 0; j < data.length; ++j) {
-          let bodyKey = _invColumnNames(data[j].name, analyzer)
-          if (bodyKey) {
-            let tmp = body[bodyKey] || body[bodyKey + ' ']
-            if (!tmp) {
-              tmp = 0
+      let cmd = `${process.env.RRD_PATH}/bin/rrdtool update --skip-past-updates ${process.env.DATA_PATH}/ee${machine}_${analyzer}.rrd`
+      let atLeastOne = false
+      if (!Array.isArray(body)) {
+        body = [ body ]
+      }
+      body.forEach(function (body) {
+        if (body['Date/hour']) {
+          atLeastOne = true
+          let input = []
+          input.push(moment.utc(body['Date/hour']).format('X'))
+          for (let j = 0; j < data.length; ++j) {
+            let bodyKey = _invColumnNames(data[j].name, analyzer)
+            if (bodyKey) {
+              let tmp = body[bodyKey] || body[bodyKey + ' ']
+              if (!tmp) {
+                tmp = 0
+              }
+              if (data[j].type === 'COUNTER') {
+                tmp = Math.round(tmp)
+              }
+              input.push(tmp)
             }
-            if (data[j].type === 'COUNTER') {
-              tmp = Math.round(tmp)
-            }
-            input.push(tmp)
           }
+          cmd += ` ${input.join(':')}`
         }
-        let cmd = `${process.env.RRD_PATH}/bin/rrdtool update --skip-past-updates ${process.env.DATA_PATH}/ee${machine}_${analyzer}.rrd ${input.join(':')}`
+      })
+      if (atLeastOne) {
         exec(cmd, function (err, body) {
           if (err) {
             logger.error('Error while executing the command.')
@@ -288,6 +298,8 @@ function _putData (machine, analyzer, body, callback) {
         })
       } else {
         callback(new Error('No date/hour found.'))
+        logger.trace(`_putData('${machine}', '${analyzer}') took ${duration(inizio, moment())}.`)
+        return
       }
     }
   })
