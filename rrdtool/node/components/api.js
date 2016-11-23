@@ -104,11 +104,11 @@ router.get('/data/:machine/:analyzer', secured, function (req, res) {
   })
 })
 
-router.post('/reset/:machine/:analyzer', secured, function (req, res) {
+router.post('/create/:machine/:analyzer', secured, function (req, res) {
   if (analyzers.indexOf(req.params.analyzer) === -1) {
     return res.status(500).send(new Error('Analyzer not handled.'))
   }
-  _resetFile(req.params.machine, req.params.analyzer, function (err) {
+  _createFile(req.params.machine, req.params.analyzer, function (err) {
     if (err) {
       return res.status(500).send(err)
     } else {
@@ -124,7 +124,7 @@ const _columnNames = {
   'W tot (W)': 'W_TOT',
   'VAR tot (VAR)': 'VAR_TOT',
   'Energy (kWh)': 'KWh',
-
+  'Module temperature (°C)': 'TEMP',
   'V L1-L2 (V)': 'V_L1_L2',
   'V L2-L3 (V)': 'V_L2_L3',
   'V L3-L1 (V)': 'V_L3_L1',
@@ -146,22 +146,39 @@ const _columnNames = {
   'VAR L3 (VAR)': 'VAR_L3',
   'Reactive Energy (KVARh)': 'KVARh',
   'Frequency (Hz)': 'HZ',
-
-  'Simple voltage:V1 (V)': 'V_L1_N',
-  'Simple voltage:V2 (V)': 'V_L2_N',
-  'Simple voltage:V3 (V)': 'V_L3_N',
-  'Module temperature (°C)': 'TEMP'
+  analyzer_a2s: {
+    'V L1-N (V)': 'V_L1_N',
+    'V L2-N (V)': 'V_L2_N',
+    'V L3-N (V)': 'V_L3_N'
+  },
+  analyzer_ai: {
+    'Simple voltage:V1 (V)': 'V_L1_N',
+    'Simple voltage:V2 (V)': 'V_L2_N',
+    'Simple voltage:V3 (V)': 'V_L3_N'
+  }
 }
 
-function _invColumnNames (key) {
-  let givenBodyKey
-  for (let i = 0; i < Object.keys(_columnNames).length && !givenBodyKey; ++i) {
-    let tmp = Object.keys(_columnNames)[i]
-    if (_columnNames[tmp] === key) {
-      givenBodyKey = tmp
+function _invColumnNames (key, analyzer) {
+  if (!key) {
+    return undefined
+  }
+  if (analyzer && analyzer.length > 0 && _columnNames['analyzer_' + analyzer]) {
+    for (let i = 0; i < Object.keys(_columnNames['analyzer_' + analyzer]).length; ++i) {
+      let tmp = Object.keys(_columnNames['analyzer_' + analyzer])[i]
+      if (_columnNames['analyzer_' + analyzer][tmp] === key.trim()) {
+        return tmp
+      }
     }
   }
-  return givenBodyKey
+  for (let i = 0; i < Object.keys(_columnNames).length; ++i) {
+    let tmp = Object.keys(_columnNames)[i]
+    if (!tmp.startsWith('analyzer_')) {
+      if (_columnNames[tmp] === key.trim()) {
+        return tmp
+      }
+    }
+  }
+  return undefined
 }
 
 router.put('/data/:machine/:analyzer', secured, function (req, res) {
@@ -200,7 +217,6 @@ function _getInfo (machine, analyzer, callback) {
   let inizio = moment()
 
   let cmd = `${process.env.RRD_PATH}/bin/rrdtool info ${process.env.DATA_PATH}/ee${machine}_${analyzer}.rrd | grep type`
-
   exec(cmd, function (err, body) {
     let result = []
     if (err) {
@@ -248,16 +264,19 @@ function _putData (machine, analyzer, body, callback) {
         let input = []
         input.push(moment.utc(body['Date/hour']).format('X'))
         for (let j = 0; j < data.length; ++j) {
-          let bodyKey = _invColumnNames(data[j].name)
+          let bodyKey = _invColumnNames(data[j].name, analyzer)
           if (bodyKey) {
             let tmp = body[bodyKey] || body[bodyKey + ' ']
+            if (!tmp) {
+              tmp = 0
+            }
             if (data[j].type === 'COUNTER') {
               tmp = Math.round(tmp)
             }
             input.push(tmp)
           }
         }
-        let cmd = `${process.env.RRD_PATH}/bin/rrdtool update ${process.env.DATA_PATH}/ee${machine}_${analyzer}.rrd ${input.join(':')}`
+        let cmd = `${process.env.RRD_PATH}/bin/rrdtool update --skip-past-updates ${process.env.DATA_PATH}/ee${machine}_${analyzer}.rrd ${input.join(':')}`
         exec(cmd, function (err, body) {
           if (err) {
             logger.error('Error while executing the command.')
@@ -298,13 +317,13 @@ function _getData (machine, analyzer, from, to, values, fields, callback) {
     }
     let cmd = `${process.env.RRD_PATH}/bin/rrdtool xport --start ${from} --end ${to} --maxrows ${values} --json`
     data.forEach(function (variable) {
-      if (fields && Array.isArray(fields) && fields.length > 0 && fields.indexOf(_invColumnNames(variable.name) || variable.name) > -1) {
-        cmd += ` DEF:${variable.name}=${process.env.DATA_PATH}/ee${machine}_${analyzer}.rrd:${variable.name}:AVERAGE`
+      if (fields && Array.isArray(fields) && fields.length > 0 && fields.indexOf(_invColumnNames(variable.name, analyzer) || variable.name) > -1) {
+        cmd += ` DEF:${variable.name}=${process.env.DATA_PATH}/ee${machine}_${analyzer}.rrd:${variable.name}:${(variable.type === 'COUNTER') ? 'LAST' : 'AVERAGE'}`
       }
     })
     data.forEach(function (variable) {
-      if (fields && Array.isArray(fields) && fields.length > 0 && fields.indexOf(_invColumnNames(variable.name) || variable.name) > -1) {
-        cmd += ` XPORT:${variable.name}:"${(_invColumnNames(variable.name) || variable.name)}"`
+      if (fields && Array.isArray(fields) && fields.length > 0 && fields.indexOf(_invColumnNames(variable.name, analyzer) || variable.name) > -1) {
+        cmd += ` XPORT:${variable.name}:"${(_invColumnNames(variable.name, analyzer) || variable.name)}"`
       }
     })
 
@@ -353,12 +372,12 @@ function _getData (machine, analyzer, from, to, values, fields, callback) {
   })
 }
 
-function _resetFile (machine, analyzer, callback) {
+function _createFile (machine, analyzer, callback) {
   if (!callback) {
     logger.debug('No callback provided.')
     return
   }
-  if (!machine || !analyzer) {
+  if (!machine || !analyzer || ['ao', 'a2s', 'ai'].indexOf(analyzer) === -1) {
     logger.debug('Data not valid.')
     callback(new Error('Data not valid.'), null)
     return
@@ -366,24 +385,68 @@ function _resetFile (machine, analyzer, callback) {
 
   let inizio = moment()
 
-  let cmd = `${process.env.RRD_PATH}/bin/rrdtool dump ${process.env.DATA_PATH}/ee${machine}_${analyzer}.rrd ${process.env.DATA_PATH}/ee${machine}_${analyzer}.xml`
+  let cmd = `${process.env.RRD_PATH}/bin/rrdtool create ${process.env.DATA_PATH}/ee${machine}_${analyzer}.rrd `
+  if (analyzer === 'ao') {
+    cmd +=
+    '--step 60 \
+    --start 1451606400 \
+    DS:V_L1_N:GAUGE:240:U:U \
+    DS:V_L2_N:GAUGE:240:U:U \
+    DS:V_L3_N:GAUGE:240:U:U \
+    DS:V_L1_L2:GAUGE:240:U:U \
+    DS:V_L2_L3:GAUGE:240:U:U \
+    DS:V_L3_L1:GAUGE:240:U:U \
+    DS:V_TOT:GAUGE:240:U:U \
+    DS:A_L1:GAUGE:240:U:U \
+    DS:A_L2:GAUGE:240:U:U \
+    DS:A_L3:GAUGE:240:U:U \
+    DS:A_MAX:GAUGE:240:U:U \
+    DS:A_N:GAUGE:240:U:U \
+    DS:W_L1:GAUGE:240:U:U \
+    DS:W_L2:GAUGE:240:U:U \
+    DS:W_L3:GAUGE:240:U:U \
+    DS:W_TOT:GAUGE:240:U:U \
+    DS:VA_L1:GAUGE:240:U:U \
+    DS:VA_L2:GAUGE:240:U:U \
+    DS:VA_L3:GAUGE:240:U:U \
+    DS:VA_TOT:GAUGE:240:U:U \
+    DS:VAR_L1:GAUGE:240:U:U \
+    DS:VAR_L2:GAUGE:240:U:U \
+    DS:VAR_L3:GAUGE:240:U:U \
+    DS:VAR_TOT:GAUGE:240:U:U \
+    DS:KWh:COUNTER:240:U:U \
+    DS:KVARh:COUNTER:240:U:U \
+    DS:HZ:GAUGE:240:U:U \
+    RRA:AVERAGE:0.5:1:1600000'
+  } else if (analyzer === 'ai') {
+    cmd +=
+    '--step 60 \
+    --start 1451606400 \
+    DS:V_L1_N:GAUGE:240:U:U \
+    DS:V_L2_N:GAUGE:240:U:U \
+    DS:V_L3_N:GAUGE:240:U:U \
+    DS:TEMP:GAUGE:240:U:U \
+    RRA:AVERAGE:0.5:1:1600000'
+  } else if (analyzer === 'a2s') {
+    cmd +=
+    '--step 2 \
+    --start 1451606400 \
+    DS:V_L1_N:GAUGE:8:U:U \
+    DS:V_L2_N:GAUGE:8:U:U \
+    DS:V_L3_N:GAUGE:8:U:U \
+    DS:W_TOT:GAUGE:8:U:U \
+    DS:VAR_TOT:GAUGE:8:U:U \
+    DS:KWh:COUNTER:8:U:U \
+    RRA:AVERAGE:0.5:1:48000000'
+  }
   exec(cmd, function (err, body) {
     if (err) {
       logger.error('Error while executing the command.')
       console.warn(err)
-      callback(err)
-      return
     }
-    let cmd = `${process.env.RRD_PATH}/bin/rrdtool restore ${process.env.DATA_PATH}/ee${machine}_${analyzer}.xml ${process.env.DATA_PATH}/ee${machine}_${analyzer}.rrd --force-overwrite`
-    exec(cmd, function (err, body) {
-      if (err) {
-        logger.error('Error while executing the command.')
-        console.warn(err)
-      }
-      callback(err)
-      logger.trace(`_resetFile('${machine}', '${analyzer}') took ${duration(inizio, moment())}.`)
-      return
-    })
+    callback(err)
+    logger.trace(`_createFile('${machine}', '${analyzer}') took ${duration(inizio, moment())}.`)
+    return
   })
 }
 
