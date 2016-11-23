@@ -104,6 +104,19 @@ router.get('/data/:machine/:analyzer', secured, function (req, res) {
   })
 })
 
+router.post('/reset/:machine/:analyzer', secured, function (req, res) {
+  if (analyzers.indexOf(req.params.analyzer) === -1) {
+    return res.status(500).send(new Error('Analyzer not handled.'))
+  }
+  _resetFile(req.params.machine, req.params.analyzer, function (err) {
+    if (err) {
+      return res.status(500).send(err)
+    } else {
+      return res.status(200).send('Done!')
+    }
+  })
+})
+
 const _columnNames = {
   'V L1-N (V)': 'V_L1_N',
   'V L2-N (V)': 'V_L2_N',
@@ -336,6 +349,40 @@ function _getData (machine, analyzer, from, to, values, fields, callback) {
 
       callback(null, result)
       logger.trace(`_getData('${machine}', '${analyzer}', '${from}', '${to}') took ${duration(inizio, moment())}.`)
+    })
+  })
+}
+
+function _resetFile (machine, analyzer, callback) {
+  if (!callback) {
+    logger.debug('No callback provided.')
+    return
+  }
+  if (!machine || !analyzer) {
+    logger.debug('Data not valid.')
+    callback(new Error('Data not valid.'), null)
+    return
+  }
+
+  let inizio = moment()
+
+  let cmd = `${process.env.RRD_PATH}/bin/rrdtool dump ${process.env.DATA_PATH}/ee${machine}_${analyzer}.rrd ${process.env.DATA_PATH}/ee${machine}_${analyzer}.xml`
+  exec(cmd, function (err, body) {
+    if (err) {
+      logger.error('Error while executing the command.')
+      console.warn(err)
+      callback(err)
+      return
+    }
+    let cmd = `${process.env.RRD_PATH}/bin/rrdtool restore ${process.env.DATA_PATH}/ee${machine}_${analyzer}.xml ${process.env.DATA_PATH}/ee${machine}_${analyzer}.rrd --force-overwrite`
+    exec(cmd, function (err, body) {
+      if (err) {
+        logger.error('Error while executing the command.')
+        console.warn(err)
+      }
+      callback(err)
+      logger.trace(`_resetFile('${machine}', '${analyzer}') took ${duration(inizio, moment())}.`)
+      return
     })
   })
 }
