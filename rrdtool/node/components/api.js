@@ -11,7 +11,8 @@ let router = express.Router()
 
 router.use(require('morgan')('dev'))
 router.use(bodyParser.urlencoded({ extended: true }))
-router.use(bodyParser.text())
+// router.use(bodyParser.text())
+router.use(bodyParser.json())
 router.use(require('method-override')())
 
 // development only
@@ -60,7 +61,7 @@ function exec (cmd, callback) {
 
   logger.debug(`Executing ${cmd}...`)
 
-  cpExec(cmd, function (err, stdout, stderr) {
+  cpExec(cmd, { maxBuffer: 50 * 1024 * 1024 }, function (err, stdout, stderr) {
     let code = 0
     if (err) {
       logger.error(`Error: ${err}`)
@@ -78,13 +79,23 @@ function exec (cmd, callback) {
   })
 }
 
+router.get('/ping', function (req, res) {
+  return res.status(200).send('OK')
+})
+
 const analyzers = [ 'ao', 'ai', 'ss', 'a2s' ]
 
 router.get('/data/:machine/:analyzer', secured, function (req, res) {
   if (analyzers.indexOf(req.params.analyzer) === -1) {
     return res.status(500).send(new Error('Analyzer not handled.'))
   }
-  _getData(req.query.machine, req.query.analyzer, req.query.from, req.query.to, req.query.values, function (err, body) {
+  let fields
+  if (req.query.fields) {
+    try {
+      fields = JSON.parse(req.query.fields)
+    } catch (e) {}
+  }
+  _getData(req.params.machine, req.params.analyzer, req.query.from, req.query.to, req.query.values, fields, function (err, body) {
     if (err) {
       return res.status(500).send(err)
     } else {
@@ -127,6 +138,17 @@ const _columnNames = {
   'Simple voltage:V2 (V)': 'V_L2_N',
   'Simple voltage:V3 (V)': 'V_L3_N',
   'Module temperature (°C)': 'TEMP'
+}
+
+function _invColumnNames (key) {
+  let givenBodyKey
+  for (let i = 0; i < Object.keys(_columnNames).length && !givenBodyKey; ++i) {
+    let tmp = Object.keys(_columnNames)[i]
+    if (_columnNames[tmp] === key) {
+      givenBodyKey = tmp
+    }
+  }
+  return givenBodyKey
 }
 
 router.put('/data/:machine/:analyzer', secured, function (req, res) {
@@ -210,27 +232,19 @@ function _putData (machine, analyzer, body, callback) {
       return
     } else {
       if (body['Date/hour']) {
-        let result = []
-        result.push(moment.utc(body['Date/hour']).format('X'))
+        let input = []
+        input.push(moment.utc(body['Date/hour']).format('X'))
         for (let j = 0; j < data.length; ++j) {
-          let key = data[j].name
-          let bodyKey
-          for (let i = 0; i < Object.keys(_columnNames).length && !bodyKey; ++i) {
-            let tmp = Object.keys(_columnNames)[i]
-            if (_columnNames[tmp] === key) {
-              bodyKey = tmp
-            }
-          }
+          let bodyKey = _invColumnNames(data[j].name)
           if (bodyKey) {
-            let tmp = body[bodyKey]
+            let tmp = body[bodyKey] || body[bodyKey + ' ']
             if (data[j].type === 'COUNTER') {
               tmp = Math.round(tmp)
             }
-            result.push(tmp)
+            input.push(tmp)
           }
         }
-        let cmd = `${process.env.RRD_PATH}/bin/rrdtool update ${process.env.DATA_PATH}/ee${machine}_${analyzer}.rrd ${body}`
-
+        let cmd = `${process.env.RRD_PATH}/bin/rrdtool update ${process.env.DATA_PATH}/ee${machine}_${analyzer}.rrd ${input.join(':')}`
         exec(cmd, function (err, body) {
           if (err) {
             logger.error('Error while executing the command.')
@@ -247,7 +261,7 @@ function _putData (machine, analyzer, body, callback) {
   })
 }
 
-function _getData (machine, analyzer, from, to, values, callback) {
+function _getData (machine, analyzer, from, to, values, fields, callback) {
   if (!callback) {
     logger.debug('No callback provided.')
     return
@@ -271,21 +285,13 @@ function _getData (machine, analyzer, from, to, values, callback) {
     }
     let cmd = `${process.env.RRD_PATH}/bin/rrdtool xport --start ${from} --end ${to} --maxrows ${values} --json`
     data.forEach(function (variable) {
-      cmd += ` DEF:${variable.name}=${process.env.DATA_PATH}/ee${machine}_${analyzer}.rrd:${variable.name}:AVERAGE`
+      if (fields && Array.isArray(fields) && fields.length > 0 && fields.indexOf(_invColumnNames(variable.name) || variable.name) > -1) {
+        cmd += ` DEF:${variable.name}=${process.env.DATA_PATH}/ee${machine}_${analyzer}.rrd:${variable.name}:AVERAGE`
+      }
     })
     data.forEach(function (variable) {
-      let key = variable.name
-      let givenBodyKey
-      for (let i = 0; i < Object.keys(_columnNames).length && !givenBodyKey; ++i) {
-        let tmp = Object.keys(_columnNames)[i]
-        if (_columnNames[tmp] === key) {
-          givenBodyKey = tmp
-        }
-      }
-      if (givenBodyKey) {
-        cmd += ` XPORT:${variable.name}:"${givenBodyKey}"`
-      } else {
-        cmd += ` XPORT:${variable.name}:"${variable.name}"`
+      if (fields && Array.isArray(fields) && fields.length > 0 && fields.indexOf(_invColumnNames(variable.name) || variable.name) > -1) {
+        cmd += ` XPORT:${variable.name}:"${(_invColumnNames(variable.name) || variable.name)}"`
       }
     })
 
