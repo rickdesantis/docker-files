@@ -15,12 +15,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     lxde-core \
     lxde-common \
     lxsession \
+    lxsession-logout \
     openbox \
     xterm \
     lxterminal \
     lxde-icon-theme \
     gtk2-engines \
     dmz-cursor-theme \
+    lxappearance \
+    lxappearance-obconf \
     tightvncserver \
     xrdp && \
     apt-get autoclean && \
@@ -49,8 +52,8 @@ EXPOSE 5901
 EXPOSE 3389
 CMD service xrdp start && vncserver :1 -desktop LXDE -geometry $GEOMETRY -depth 24 -dpi 100 && tail -F /root/.vnc/*.log
 
-# Build: docker build -t lxde1 ../lxde
-# Run:   docker run --name=lxde1  -p 5901:5901 -p 3389:3389 lxde1 &
-# Bash:  docker exec -it lxde1 bash
-# Start: docker start lxde1
-# Stop:  docker stop lxde1
+# Build: docker build -t lxde ../ubuntu-lxde
+# Run:   docker run --name=lxde -p 5901:5901 -p 3389:3389 lxde &
+# Bash:  docker exec -it lxde bash
+# Start: docker start lxde
+# Stop:  docker stop lxde
