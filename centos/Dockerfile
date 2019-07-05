@@ -1,21 +1,23 @@
 FROM centos:7
-MAINTAINER Riccardo B. Desantis <riccardobenito.desantis@gmail.com>
+LABEL maintainer="riccardobenito.desantis@gmail.com"
 
 # Setting the environment
 ENV HOSTNAME centos.rickdesantis.docker.com
-ENV USERHOME  /root
-ENV USER root
+ENV USER centos
+ENV PASSWORD cent0s
+ENV USERHOME /home/centos
 
+RUN useradd -ms /bin/bash --uid 1010 ${USER} && \
+    echo ${USER}':'${PASSWORD} | chpasswd && \
+    echo 'root:'${PASSWORD} | chpasswd
+USER $USER
 WORKDIR $USERHOME
-# Update the repos and install all the used packages
-RUN yum update -y -q && \
-    touch /tmp/empty
 
 # Fake command
-CMD tail -F /tmp/empty
+CMD tail -f /dev/null
 
-# Build: docker build -t centos1 ../centos
-# Run:   docker run --name=centos1 centos1 &
-# Bash:  docker exec -it centos1 bash
-# Start: docker start centos1
-# Stop:  docker stop centos1
+# Build: docker build -t centos ../centos
+# Run:   docker run --name=centos centos &
+# Bash:  docker exec -it centos bash
+# Start: docker start centos
+# Stop:  docker stop centos
