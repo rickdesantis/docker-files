@@ -9,7 +9,7 @@
     "express": "4.13.x",
     "body-parser": "1.14.x",
     "method-override": "2.3.x",
-    "morgan": "1.6.x",
+    "morgan": "1.9.x",
     "errorhandler": "1.4.x",
     "basic-auth": "1.0.x"
   },
